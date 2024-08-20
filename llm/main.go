@@ -2,10 +2,13 @@ package llm
 
 import (
 	"context"
+	"log"
 	"os"
 
 	"github.com/gage-technologies/mistral-go"
+	"github.com/google/generative-ai-go/genai"
 	"github.com/liushuangls/go-anthropic/v2"
+	"google.golang.org/api/option"
 )
 
 type LanguageModel interface {
@@ -42,6 +45,30 @@ func NewMistralLLM(opts ...lLMOption) LanguageModel {
 
 	for _, opt := range opts {
 		opt(llm)
+	}
+
+	return llm
+}
+
+func NewGeminiClient() LanguageModel {
+	ctx := context.Background()
+
+	apiKey, ok := os.LookupEnv("GEMINI_API_KEY")
+	if !ok {
+		log.Fatalln("Environment variable GEMINI_API_KEY not set")
+	}
+
+	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+	if err != nil {
+		log.Fatalf("Error creating client: %v", err)
+	}
+
+	llm := &geminiLLM{
+		modelName:   "gemini-1.5-pro-exp-0801",
+		temperature: 0.7,
+		maxTokens:   512,
+		topP:        1,
+		client:      client,
 	}
 
 	return llm
