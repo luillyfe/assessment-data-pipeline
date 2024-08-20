@@ -50,7 +50,7 @@ func NewMistralLLM(opts ...lLMOption) LanguageModel {
 	return llm
 }
 
-func NewGeminiClient() LanguageModel {
+func NewGeminiClient(opts ...lLMOption) LanguageModel {
 	ctx := context.Background()
 
 	apiKey, ok := os.LookupEnv("GEMINI_API_KEY")
@@ -71,6 +71,10 @@ func NewGeminiClient() LanguageModel {
 		client:      client,
 	}
 
+	for _, opt := range opts {
+		opt(llm)
+	}
+
 	return llm
 }
 
@@ -83,6 +87,8 @@ func WithMaxTokens(maxTokens int) lLMOption {
 			v.maxTokens = maxTokens
 		case *anthropicLLM:
 			v.maxTokens = maxTokens
+		case *geminiLLM:
+			v.maxTokens = maxTokens
 		}
 	}
 }
@@ -93,6 +99,8 @@ func WithModelName(modelName string) lLMOption {
 		case *mistralLLM:
 			v.modelName = modelName
 		case *anthropicLLM:
+			v.modelName = modelName
+		case *geminiLLM:
 			v.modelName = modelName
 		}
 	}
