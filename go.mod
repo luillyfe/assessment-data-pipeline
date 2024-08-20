@@ -5,6 +5,8 @@ go 1.22.5
 require (
 	cloud.google.com/go/firestore v1.16.0
 	github.com/apache/beam/sdks/v2 v2.58.1
+	github.com/gage-technologies/mistral-go v1.1.0
+	github.com/liushuangls/go-anthropic/v2 v2.6.0
 	google.golang.org/api v0.192.0
 )
 
