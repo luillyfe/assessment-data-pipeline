@@ -7,6 +7,7 @@ require (
 	github.com/apache/beam/sdks/v2 v2.58.1
 	github.com/gage-technologies/mistral-go v1.1.0
 	github.com/google/generative-ai-go v0.17.0
+	github.com/google/go-cmp v0.6.0
 	github.com/liushuangls/go-anthropic/v2 v2.6.0
 	google.golang.org/api v0.192.0
 )
@@ -34,7 +35,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/pprof v0.0.0-20230602150820-91b7bce49751 // indirect
 	github.com/google/s2a-go v0.1.8 // indirect
 	github.com/google/uuid v1.6.0 // indirect
