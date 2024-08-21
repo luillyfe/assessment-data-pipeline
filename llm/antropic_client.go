@@ -8,12 +8,16 @@ import (
 	"github.com/liushuangls/go-anthropic/v2"
 )
 
+type AnthropicClient interface {
+	CreateMessages(ctx context.Context, request anthropic.MessagesRequest) (response anthropic.MessagesResponse, err error)
+}
+
 type anthropicLLM struct {
 	modelName   string
 	temperature float64
 	maxTokens   int
 	topP        float64
-	client      *anthropic.Client
+	client      AnthropicClient
 }
 
 func (a *anthropicLLM) GenerateText(ctx context.Context, prompt string) (string, error) {

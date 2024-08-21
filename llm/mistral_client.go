@@ -7,12 +7,16 @@ import (
 	"github.com/gage-technologies/mistral-go"
 )
 
+type MistralClient interface {
+	Chat(model string, messages []mistral.ChatMessage, params *mistral.ChatRequestParams) (*mistral.ChatCompletionResponse, error)
+}
+
 type mistralLLM struct {
 	modelName   string
 	temperature float64
 	maxTokens   int
 	topP        float64
-	client      *mistral.MistralClient
+	client      MistralClient // *mistral.MistralClient
 }
 
 func (m *mistralLLM) GenerateText(ctx context.Context, prompt string) (string, error) {
