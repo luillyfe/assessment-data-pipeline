@@ -48,9 +48,9 @@ type mistralLLM struct {
 }
 
 /*
-GenerateText generates text using the Mistral LLM based on the provided prompt.
+GenerateText generates text using the Mistral LLM based on the provided prompt and optional generation options.
 
-It takes a context.Context and a prompt string as input.
+It takes a context.Context, a prompt string, and optional generation options as input.
 It constructs a Mistral ChatRequest with the prompt and model parameters.
 It sends the request to the Mistral API using the client.
 It handles potential errors from the Mistral API.
@@ -60,17 +60,34 @@ Args:
 
 	ctx: The context for the request.
 	prompt: The input prompt for text generation.
+	opts: Optional generation options, such as tools.
 
 Returns:
 
 	A string containing the generated text and an error if any occurred.
 */
-func (m *mistralLLM) GenerateText(ctx context.Context, prompt string) (string, error) {
+func (m *mistralLLM) GenerateText(ctx context.Context, prompt string, opts *GenerateOptions) (string, error) {
+	// Tool handling
+	var mistralTools []mistral.Tool
+	if opts != nil && len(opts.Tools) > 0 {
+		for _, genericTool := range opts.Tools {
+			if genericTool.Type != MistralToolType {
+				return "", fmt.Errorf("error: tool type mismatch for Mistral LLM")
+			}
+			mistralTool, ok := genericTool.Tool.(mistral.Tool)
+			if !ok {
+				return "", fmt.Errorf("error: invalid tool type for Mistral LLM")
+			}
+			mistralTools = append(mistralTools, mistralTool)
+		}
+	}
+
 	// Using chat completion
 	resp, err := m.client.Chat(m.modelName, []mistral.ChatMessage{{Content: prompt, Role: mistral.RoleUser}}, &mistral.ChatRequestParams{
 		Temperature: m.temperature,
 		MaxTokens:   m.maxTokens,
 		TopP:        m.topP,
+		Tools:       mistralTools,
 	})
 	if err != nil {
 		return "", fmt.Errorf("error getting chat completion: %w", err)

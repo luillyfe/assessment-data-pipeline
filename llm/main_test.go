@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gage-technologies/mistral-go"
+	"github.com/google/generative-ai-go/genai"
 	"github.com/google/go-cmp/cmp"
 	"github.com/liushuangls/go-anthropic/v2"
 )
@@ -30,6 +31,7 @@ func TestGenerateText(t *testing.T) {
 		name         string
 		llm          LanguageModel
 		prompt       string
+		opts         *GenerateOptions
 		want         string
 		wantErr      bool
 		setEnvVars   func()
@@ -45,7 +47,19 @@ func TestGenerateText(t *testing.T) {
 				client:      &mockMistralClient{},
 			},
 			prompt: "Hello, how are you?",
-			want:   "Mistral Response",
+			opts: &GenerateOptions{
+				Tools: []GenericTool{
+					NewMistralTool(mistral.Tool{
+						Type: mistral.ToolTypeFunction,
+						Function: mistral.Function{
+							Name:        "test_function",
+							Description: "A test function",
+							Parameters:  map[string]interface{}{},
+						},
+					}),
+				},
+			},
+			want: "Mistral Response",
 		},
 		{
 			name: "Anthropic Success",
@@ -57,19 +71,22 @@ func TestGenerateText(t *testing.T) {
 				client:      &mockAnthropicClient{},
 			},
 			prompt: "Hello, how are you?",
-			want:   "Anthropic Response",
+			opts: &GenerateOptions{
+				Tools: []GenericTool{
+					NewAnthropicTool(anthropic.ToolDefinition{
+						Name:        "test_function",
+						Description: "A test function",
+						InputSchema: map[string]interface{}{},
+					}),
+				},
+			},
+			want: "Anthropic Response",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setEnvVars != nil {
-				tt.setEnvVars()
-			}
-			if tt.unsetEnvVars != nil {
-				defer tt.unsetEnvVars()
-			}
-
-			got, err := tt.llm.GenerateText(context.Background(), tt.prompt)
+			got, err := tt.llm.GenerateText(context.Background(), tt.prompt, tt.opts)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GenerateText() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -78,5 +95,47 @@ func TestGenerateText(t *testing.T) {
 				t.Errorf("GenerateText() mismatch (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestGenerateTextWithNoTools(t *testing.T) {
+	llm := &anthropicLLM{
+		modelName:   anthropic.ModelClaudeInstant1Dot2,
+		temperature: 0.7,
+		maxTokens:   512,
+		topP:        1,
+		client:      &mockAnthropicClient{},
+	}
+
+	opts := &GenerateOptions{} // No tools
+
+	got, err := llm.GenerateText(context.Background(), "Test prompt", opts)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	want := "Anthropic Response"
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("GenerateText() mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestGenerateTextWithInvalidTools(t *testing.T) {
+	llm := &mistralLLM{
+		modelName:   "gemini-1.5-pro-exp-0801",
+		temperature: 0.7,
+		maxTokens:   512,
+		topP:        1,
+		client:      &mockMistralClient{},
+	}
+
+	opts := &GenerateOptions{
+		Tools: []GenericTool{
+			NewGeminiTool(&genai.Tool{}), // Invalid tool type for Mistral
+		},
+	}
+
+	_, err := llm.GenerateText(context.Background(), "Test prompt", opts)
+	if err == nil {
+		t.Errorf("Expected error for invalid tool type, got nil")
 	}
 }

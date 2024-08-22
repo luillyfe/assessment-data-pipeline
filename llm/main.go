@@ -57,11 +57,32 @@ import (
 	"google.golang.org/api/option"
 )
 
+// ToolType represents the type of AI model tool
+type ToolType int
+
+const (
+	GeminiToolType ToolType = iota
+	MistralToolType
+	AnthropicToolType
+)
+
+// GenericTool is a struct that can hold any type of tool
+type GenericTool struct {
+	Type ToolType
+	Tool interface{}
+}
+
+// GenerateOptions holds common options for text generation
+type GenerateOptions struct {
+	Tools []GenericTool
+}
+
 // LanguageModel defines a common interface for interacting with different Large Language Models (LLMs).
-// It provides a single method, GenerateText, for generating text from a given prompt.
+// It provides a single method, GenerateText, for generating text from a given prompt and optional generation options.
 type LanguageModel interface {
-	// GenerateText takes a context and a prompt string as input, and returns the generated text and an error.
-	GenerateText(context.Context, string) (string, error)
+	// GenerateText takes a context, a prompt string, and optional generation options as input,
+	// and returns the generated text and an error.
+	GenerateText(ctx context.Context, prompt string, opts *GenerateOptions) (string, error)
 }
 
 /*
@@ -239,5 +260,27 @@ func WithModelName(modelName string) lLMOption {
 		case *geminiLLM:
 			v.modelName = modelName
 		}
+	}
+}
+
+// Helper functions to create GenericTools
+func NewGeminiTool(tool *genai.Tool) GenericTool {
+	return GenericTool{
+		Type: GeminiToolType,
+		Tool: tool,
+	}
+}
+
+func NewMistralTool(tool mistral.Tool) GenericTool {
+	return GenericTool{
+		Type: MistralToolType,
+		Tool: tool,
+	}
+}
+
+func NewAnthropicTool(tool anthropic.ToolDefinition) GenericTool {
+	return GenericTool{
+		Type: AnthropicToolType,
+		Tool: tool,
 	}
 }
