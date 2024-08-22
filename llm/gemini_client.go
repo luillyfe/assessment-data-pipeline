@@ -15,6 +15,25 @@ type geminiLLM struct {
 	client      *genai.Client
 }
 
+/*
+GenerateText generates text using the Google Gemini LLM based on the provided prompt and optional generation options.
+
+It takes a context.Context, a prompt string, and optional generation options as input.
+It constructs a Gemini chat request with the prompt and model parameters.
+It sends the request to the Gemini API using the client.
+It handles potential errors from the Gemini API.
+It extracts and returns the generated text from the API response.
+
+Args:
+
+	ctx: The context for the request.
+	prompt: The input prompt for text generation.
+	opts: Optional generation options, such as tools.
+
+Returns:
+
+	A string containing the generated text and an error if any occurred.
+*/
 func (g *geminiLLM) GenerateText(ctx context.Context, prompt string, opts *GenerateOptions) (string, error) {
 	// Model initialization
 	model := g.client.GenerativeModel(g.modelName)

@@ -48,9 +48,9 @@ type mistralLLM struct {
 }
 
 /*
-GenerateText generates text using the Mistral LLM based on the provided prompt.
+GenerateText generates text using the Mistral LLM based on the provided prompt and optional generation options.
 
-It takes a context.Context and a prompt string as input.
+It takes a context.Context, a prompt string, and optional generation options as input.
 It constructs a Mistral ChatRequest with the prompt and model parameters.
 It sends the request to the Mistral API using the client.
 It handles potential errors from the Mistral API.
@@ -60,6 +60,7 @@ Args:
 
 	ctx: The context for the request.
 	prompt: The input prompt for text generation.
+	opts: Optional generation options, such as tools.
 
 Returns:
 

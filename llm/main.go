@@ -78,10 +78,11 @@ type GenerateOptions struct {
 }
 
 // LanguageModel defines a common interface for interacting with different Large Language Models (LLMs).
-// It provides a single method, GenerateText, for generating text from a given prompt.
+// It provides a single method, GenerateText, for generating text from a given prompt and optional generation options.
 type LanguageModel interface {
-	// GenerateText takes a context and a prompt string as input, and returns the generated text and an error.
-	GenerateText(context.Context, string, *GenerateOptions) (string, error)
+	// GenerateText takes a context, a prompt string, and optional generation options as input,
+	// and returns the generated text and an error.
+	GenerateText(ctx context.Context, prompt string, opts *GenerateOptions) (string, error)
 }
 
 /*
