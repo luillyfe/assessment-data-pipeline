@@ -65,12 +65,28 @@ Returns:
 
 	A string containing the generated text and an error if any occurred.
 */
-func (m *mistralLLM) GenerateText(ctx context.Context, prompt string) (string, error) {
+func (m *mistralLLM) GenerateText(ctx context.Context, prompt string, opts *GenerateOptions) (string, error) {
+	// Tool handling
+	var mistralTools []mistral.Tool
+	if opts != nil && len(opts.Tools) > 0 {
+		for _, genericTool := range opts.Tools {
+			if genericTool.Type != MistralToolType {
+				return "", fmt.Errorf("error: tool type mismatch for Mistral LLM")
+			}
+			mistralTool, ok := genericTool.Tool.(mistral.Tool)
+			if !ok {
+				return "", fmt.Errorf("error: invalid tool type for Mistral LLM")
+			}
+			mistralTools = append(mistralTools, mistralTool)
+		}
+	}
+
 	// Using chat completion
 	resp, err := m.client.Chat(m.modelName, []mistral.ChatMessage{{Content: prompt, Role: mistral.RoleUser}}, &mistral.ChatRequestParams{
 		Temperature: m.temperature,
 		MaxTokens:   m.maxTokens,
 		TopP:        m.topP,
+		Tools:       mistralTools,
 	})
 	if err != nil {
 		return "", fmt.Errorf("error getting chat completion: %w", err)

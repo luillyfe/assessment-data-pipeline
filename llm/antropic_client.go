@@ -66,10 +66,25 @@ Returns:
 
 	A string containing the generated text and an error if any occurred.
 */
-func (a *anthropicLLM) GenerateText(ctx context.Context, prompt string) (string, error) {
+func (a *anthropicLLM) GenerateText(ctx context.Context, prompt string, opts *GenerateOptions) (string, error) {
 	// Cast to float32
 	temperature := float32(a.temperature)
 	topP := float32(a.topP)
+
+	// Tool handling
+	var anthropicTools []anthropic.ToolDefinition
+	if opts != nil && len(opts.Tools) > 0 {
+		for _, genericTool := range opts.Tools {
+			if genericTool.Type != AnthropicToolType {
+				return "", fmt.Errorf("error: tool type mismatch for Anthropic LLM")
+			}
+			anthropicTool, ok := genericTool.Tool.(anthropic.ToolDefinition)
+			if !ok {
+				return "", fmt.Errorf("error: invalid tool type for Anthropic LLM")
+			}
+			anthropicTools = append(anthropicTools, anthropicTool)
+		}
+	}
 
 	// Using chat completion
 	resp, err := a.client.CreateMessages(ctx, anthropic.MessagesRequest{
@@ -80,6 +95,7 @@ func (a *anthropicLLM) GenerateText(ctx context.Context, prompt string) (string,
 		MaxTokens:   a.maxTokens,
 		Temperature: &temperature,
 		TopP:        &topP,
+		Tools:       anthropicTools,
 	})
 	if err != nil {
 		var e *anthropic.APIError
