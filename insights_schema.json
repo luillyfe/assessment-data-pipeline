@@ -1,0 +1,18 @@
+{
+  "overall_assessment": "string",
+  "questions_answered_correctly": "integer",
+  "strengths": ["string1", "string2", "..."],
+  "weaknesses": ["string1", "string2", "..."],
+  "actionable_feedback": {
+    "actionable_feedback_1": "string",
+    "actionable_feedback_2": "string",
+    "actionable_feedback_3": "string",
+    "...": "string"
+  },
+  "business_case_impact_analysis": {
+    "business_case_impact_analysis_1": "string",
+    "business_case_impact_analysis_2": "string",
+    "business_case_impact_analysis_3": "string",
+    "...": "string"
+  }
+}
