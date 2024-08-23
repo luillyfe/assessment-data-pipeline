@@ -77,7 +77,7 @@ func readDataFromSource(scope beam.Scope, project, assessmentCollection string) 
 	// Define the element type
 	elemType := reflect.TypeOf(Assessment{})
 
-	// Read data from the source using textio.Read
+	// Read data from the source using firestoreio.Read
 	return firestoreio.Read(scope, cfg, elemType)
 }
 
