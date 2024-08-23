@@ -83,7 +83,7 @@ func readDataFromSource(scope beam.Scope, project, assessmentCollection string) 
 
 func transformData(scope beam.Scope, documents beam.PCollection) beam.PCollection {
 	// Process the Firestore documents
-	return beam.ParDo(scope, ProcessElement, documents)
+	return beam.ParDo(scope, &ExtractInsights{}, documents)
 }
 
 func loadDataIntoDestination(scope beam.Scope, processed beam.PCollection) {
