@@ -43,7 +43,6 @@ func (g *geminiLLM) GenerateText(ctx context.Context, prompt string, opts *Gener
 	model.SetTopP(float32(g.topP))
 	model.SetMaxOutputTokens(int32(g.maxTokens))
 	model.SetTopK(64)
-	model.ResponseMIMEType = "text/plain"
 
 	// Tool handling
 	if opts != nil && len(opts.Tools) > 0 {
@@ -57,6 +56,12 @@ func (g *geminiLLM) GenerateText(ctx context.Context, prompt string, opts *Gener
 				return "", fmt.Errorf("error: invalid tool type for Gemini LLM")
 			}
 			model.Tools = append(model.Tools, geminiTool)
+		}
+
+		if opts.ResponseMIMEType != "" {
+			model.ResponseMIMEType = opts.ResponseMIMEType
+		} else {
+			model.ResponseMIMEType = "text/plain" // Default MIME type
 		}
 	}
 
