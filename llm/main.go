@@ -74,7 +74,8 @@ type GenericTool struct {
 
 // GenerateOptions holds common options for text generation
 type GenerateOptions struct {
-	Tools []GenericTool
+	Tools            []GenericTool
+	ResponseMIMEType string
 }
 
 // LanguageModel defines a common interface for interacting with different Large Language Models (LLMs).
