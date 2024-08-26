@@ -1,0 +1,46 @@
+{
+  "type": "object",
+  "properties": {
+    "overall_assessment": {
+      "type": "string",
+      "description": "A summary assessment or evaluation of the subject."
+    },
+    "questions_answered_correctly": {
+      "type": "integer",
+      "description": "The number of questions answered correctly."
+    },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "A list of strengths or positive attributes."
+    },
+    "weaknesses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "A list of weaknesses or areas for improvement."
+    },
+    "actionable_feedback": {
+      "type": "object",
+      "description": "Feedback that can be acted upon, categorized into different areas.",
+      "additionalProperties": false
+    },
+    "business_case_impact_analysis": {
+      "type": "object",
+      "description": "Analysis of the impact on the business case, categorized into different areas.",
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "overall_assessment",
+    "questions_answered_correctly",
+    "strengths",
+    "weaknesses",
+    "actionable_feedback",
+    "business_case_impact_analysis"
+  ],
+  "additionalProperties": false
+}
