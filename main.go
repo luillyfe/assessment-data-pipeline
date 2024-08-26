@@ -98,5 +98,5 @@ func loadDataIntoDestination(scope beam.Scope, processed beam.PCollection) {
 	// Convert insights to JSON strings
 	jsonInsights := beam.ParDo(scope, insightsToJSON, processed)
 	// Write the processed data to the destination
-	textio.Write(scope, "processed.txt", jsonInsights)
+	textio.Write(scope, "processed.jsonl", jsonInsights)
 }
