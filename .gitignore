@@ -1,3 +1,6 @@
 /.secrets
-/processed.txt
 /.vscode
+/.files
+
+/processed.txt
+/processed.jsonl
