@@ -62,6 +62,8 @@ func (g *geminiLLM) GenerateText(ctx context.Context, prompt string, opts *Gener
 		// Update ResponseMIMEType if it was set by the caller
 		if opts.ResponseMIMEType != "" {
 			model.ResponseMIMEType = opts.ResponseMIMEType
+		} else {
+			model.ResponseMIMEType = "text/plain" // Default MIME type
 		}
 	}
 
