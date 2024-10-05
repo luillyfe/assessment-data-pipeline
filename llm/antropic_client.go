@@ -40,12 +40,9 @@ Fields:
 
 	client: An instance of the AnthropicClient interface, used to interact with the Anthropic API.
 */
-type anthropicLLM struct {
-	modelName   string
-	temperature float64
-	maxTokens   int
-	topP        float64
-	client      AnthropicClient
+type anthropicLLM[T ToolType] struct {
+	config LLMConfig
+	client AnthropicClient
 }
 
 /*
@@ -67,33 +64,30 @@ Returns:
 
 	A string containing the generated text and an error if any occurred.
 */
-func (a *anthropicLLM) GenerateText(ctx context.Context, prompt string, opts *GenerateOptions) (string, error) {
+func (a *anthropicLLM[T]) GenerateText(ctx context.Context, prompt string, opts *GenerateOptions[T]) (string, error) {
 	// Cast to float32
-	temperature := float32(a.temperature)
-	topP := float32(a.topP)
+	temperature := float32(a.config.Temperature)
+	topP := float32(a.config.TopP)
 
 	// Tool handling
 	var anthropicTools []anthropic.ToolDefinition
 	if opts != nil && len(opts.Tools) > 0 {
-		for _, genericTool := range opts.Tools {
-			if genericTool.Type != AnthropicToolType {
-				return "", fmt.Errorf("error: tool type mismatch for Anthropic LLM")
+		for _, opt := range opts.Tools {
+			if anthropicTool, ok := any(opt.Tool).(anthropic.ToolDefinition); ok {
+				anthropicTools = append(anthropicTools, anthropicTool)
+			} else {
+				return "", fmt.Errorf("tool does not implement anthropic.ToolDefinition")
 			}
-			anthropicTool, ok := genericTool.Tool.(anthropic.ToolDefinition)
-			if !ok {
-				return "", fmt.Errorf("error: invalid tool type for Anthropic LLM")
-			}
-			anthropicTools = append(anthropicTools, anthropicTool)
 		}
 	}
 
 	// Using chat completion
 	resp, err := a.client.CreateMessages(ctx, anthropic.MessagesRequest{
-		Model: a.modelName,
+		Model: a.config.ModelName,
 		Messages: []anthropic.Message{
 			anthropic.NewUserTextMessage(prompt),
 		},
-		MaxTokens:   a.maxTokens,
+		MaxTokens:   a.config.MaxTokens,
 		Temperature: &temperature,
 		TopP:        &topP,
 		Tools:       anthropicTools,

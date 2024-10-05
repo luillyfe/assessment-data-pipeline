@@ -39,12 +39,9 @@ Fields:
 
 	client: An instance of the MistralClient interface, used to interact with the Mistral API.
 */
-type mistralLLM struct {
-	modelName   string
-	temperature float64
-	maxTokens   int
-	topP        float64
-	client      MistralClient
+type mistralLLM[T ToolType] struct {
+	config LLMConfig
+	client MistralClient
 }
 
 /*
@@ -66,27 +63,24 @@ Returns:
 
 	A string containing the generated text and an error if any occurred.
 */
-func (m *mistralLLM) GenerateText(ctx context.Context, prompt string, opts *GenerateOptions) (string, error) {
+func (m *mistralLLM[T]) GenerateText(ctx context.Context, prompt string, opts *GenerateOptions[T]) (string, error) {
 	// Tool handling
 	var mistralTools []mistral.Tool
 	if opts != nil && len(opts.Tools) > 0 {
-		for _, genericTool := range opts.Tools {
-			if genericTool.Type != MistralToolType {
-				return "", fmt.Errorf("error: tool type mismatch for Mistral LLM")
+		for _, opt := range opts.Tools {
+			if mistralTool, ok := any(opt.Tool).(mistral.Tool); ok {
+				mistralTools = append(mistralTools, mistralTool)
+			} else {
+				return "", fmt.Errorf("tool doesn't implement mistral.Tool")
 			}
-			mistralTool, ok := genericTool.Tool.(mistral.Tool)
-			if !ok {
-				return "", fmt.Errorf("error: invalid tool type for Mistral LLM")
-			}
-			mistralTools = append(mistralTools, mistralTool)
 		}
 	}
 
 	// Using chat completion
-	resp, err := m.client.Chat(m.modelName, []mistral.ChatMessage{{Content: prompt, Role: mistral.RoleUser}}, &mistral.ChatRequestParams{
-		Temperature: m.temperature,
-		MaxTokens:   m.maxTokens,
-		TopP:        m.topP,
+	resp, err := m.client.Chat(m.config.ModelName, []mistral.ChatMessage{{Content: prompt, Role: mistral.RoleUser}}, &mistral.ChatRequestParams{
+		Temperature: float64(m.config.Temperature),
+		MaxTokens:   m.config.MaxTokens,
+		TopP:        float64(m.config.TopP),
 		Tools:       mistralTools,
 	})
 	if err != nil {

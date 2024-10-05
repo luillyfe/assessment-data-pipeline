@@ -7,12 +7,9 @@ import (
 	"github.com/google/generative-ai-go/genai"
 )
 
-type geminiLLM struct {
-	modelName   string
-	temperature float64
-	maxTokens   int
-	topP        float64
-	client      *genai.Client
+type geminiLLM[T ToolType] struct {
+	config LLMConfig
+	client *genai.Client
 }
 
 /*
@@ -34,29 +31,26 @@ Returns:
 
 	A string containing the generated text and an error if any occurred.
 */
-func (g *geminiLLM) GenerateText(ctx context.Context, prompt string, opts *GenerateOptions) (string, error) {
+func (g *geminiLLM[T]) GenerateText(ctx context.Context, prompt string, opts *GenerateOptions[T]) (string, error) {
 	// Model initialization
-	model := g.client.GenerativeModel(g.modelName)
+	model := g.client.GenerativeModel(g.config.ModelName)
 
 	// Model configuration
-	model.SetTemperature(float32(g.temperature))
-	model.SetTopP(float32(g.topP))
-	model.SetMaxOutputTokens(int32(g.maxTokens))
+	model.SetTemperature(g.config.Temperature)
+	model.SetTopP(g.config.TopP)
+	model.SetMaxOutputTokens(int32(g.config.MaxTokens))
 	model.SetTopK(64)
 	model.ResponseMIMEType = "text/plain" // Default MIME type
 
 	// Tool handling
 	if opts != nil && len(opts.Tools) > 0 {
 		model.Tools = make([]*genai.Tool, 0)
-		for _, genericTool := range opts.Tools {
-			if genericTool.Type != GeminiToolType {
-				return "", fmt.Errorf("error: tool type mismatch for Gemini LLM")
+		for _, opt := range opts.Tools {
+			if geminiTool, ok := any(opt.Tool).(genai.Tool); ok {
+				model.Tools = append(model.Tools, &geminiTool)
+			} else {
+				return "", fmt.Errorf("tool doesn't implement genai.Tool")
 			}
-			geminiTool, ok := genericTool.Tool.(*genai.Tool)
-			if !ok {
-				return "", fmt.Errorf("error: invalid tool type for Gemini LLM")
-			}
-			model.Tools = append(model.Tools, geminiTool)
 		}
 
 		// Update ResponseMIMEType if it was set by the caller

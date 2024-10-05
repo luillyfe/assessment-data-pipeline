@@ -1,53 +1,8 @@
-/*
-Package llm provides a common interface for interacting with different Large Language Models (LLMs).
-
-It defines a LanguageModel interface that abstracts the core functionality of generating text from a given prompt.
-This allows for easy integration of different LLM providers without modifying the core application logic.
-
-The package currently supports the following LLM providers:
-
-- Anthropic: Uses the Anthropic API to access Claude models.
-- Mistral: Uses the Mistral API to access Mistral models.
-- Google Gemini: Uses the Google Gemini API to access Gemini models.
-
-Each LLM provider has its own factory function for creating a new LanguageModel instance:
-
-- NewAnthropicLLM: Creates a new Anthropic LLM instance.
-- NewMistralLLM: Creates a new Mistral LLM instance.
-- NewGeminiClient: Creates a new Google Gemini LLM instance.
-
-These factory functions take a variable number of lLMOption arguments to customize the model's settings, such as:
-
-- Model Name: Specifies the name of the LLM model to use.
-- Temperature: Controls the randomness of the generated text.
-- Max Tokens: Sets the maximum number of tokens allowed in the generated text.
-- Top P: Sets the nucleus sampling threshold for the generated text.
-
-The package also provides helper functions for creating common lLMOptions:
-
-- WithMaxTokens: Creates an lLMOption that sets the maximum number of tokens.
-- WithModelName: Creates an lLMOption that sets the model name.
-
-Example Usage:
-
-```go
-// Create a new Anthropic LLM instance with default settings.
-llm := llm.NewAnthropicLLM()
-
-// Generate text using the LLM.
-text, err := llm.GenerateText(context.Background(), "Hello, how are you?")
-
-	if err != nil {
-		// Handle error.
-	}
-
-// Print the generated text.
-fmt.Println(text)
-*/
 package llm
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -57,134 +12,88 @@ import (
 	"google.golang.org/api/option"
 )
 
-// ToolType represents the type of AI model tool
-type ToolType int
-
-const (
-	GeminiToolType ToolType = iota
-	MistralToolType
-	AnthropicToolType
-)
-
-// GenericTool is a struct that can hold any type of tool
-type GenericTool struct {
-	Type ToolType
-	Tool interface{}
+// ToolType is a type constraint for the allowed tool types
+type ToolType interface {
+	mistral.Tool | anthropic.ToolDefinition | genai.Tool
 }
 
-// GenerateOptions holds common options for text generation
-type GenerateOptions struct {
-	Tools            []GenericTool
+// GenericTool is a generic struct that can hold specific types of tools
+type GenericTool[T ToolType] struct {
+	Tool T
+}
+
+// GenerateOptions hold common options for text generations
+type GenerateOptions[T ToolType] struct {
+	Tools            []GenericTool[T]
 	ResponseMIMEType string
 }
 
-// LanguageModel defines a common interface for interacting with different Large Language Models (LLMs).
-// It provides a single method, GenerateText, for generating text from a given prompt and optional generation options.
-type LanguageModel interface {
-	// GenerateText takes a context, a prompt string, and optional generation options as input,
-	// and returns the generated text and an error.
-	GenerateText(ctx context.Context, prompt string, opts *GenerateOptions) (string, error)
+// LanguageModel defines a common interface for interacting with Large Language Models (LLMs)
+type LanguageModel[T ToolType] interface {
+	GenerateText(ctx context.Context, prompt string, opts *GenerateOptions[T]) (string, error)
 }
 
-/*
-NewAnthropicLLM creates a new instance of a LanguageModel using Anthropic's API.
-It takes a variable number of lLMOption arguments to customize the model's settings.
+type LLMConfig struct {
+	ModelName   string
+	Temperature float32
+	MaxTokens   int
+	TopP        float32
+}
 
-The function reads the CLAUDE_API_KEY environment variable to authenticate with the Anthropic API.
-
-By default, the function initializes the Anthropic LLM with the following settings:
-  - Model Name: "anthropic.ModelClaudeInstant1Dot2"
-  - Temperature: 0.7
-  - Max Tokens: 512
-  - Top P: 1
-
-These default settings can be overridden by passing in lLMOption arguments.
-For example, to change the model name to "anthropic.ModelClaude2", you would use the following code:
-
-	llm := NewAnthropicLLM(WithModelName("anthropic.ModelClaude2"))
-
-The function returns a LanguageModel interface that can be used to generate text.
-*/
-func NewAnthropicLLM(opts ...lLMOption) LanguageModel {
-	CLAUDE_API_KEY := os.Getenv("CLAUDE_API_KEY")
-
-	llm := &anthropicLLM{
-		modelName:   anthropic.ModelClaudeInstant1Dot2,
-		temperature: 0.7,
-		maxTokens:   512,
-		topP:        1,
-		client:      anthropic.NewClient(CLAUDE_API_KEY),
+func NewLLM[T ToolType](llmType string, opts ...LLMOption) (LanguageModel[T], error) {
+	config := LLMConfig{
+		ModelName:   "mistral-small-latest",
+		Temperature: 0.7,
+		MaxTokens:   512,
+		TopP:        1,
 	}
 
 	for _, opt := range opts {
-		opt(llm)
+		opt(config)
 	}
 
-	return llm
+	switch llmType {
+	case "anthropic":
+		return newAnthropicLLM[T](config)
+	case "mistral":
+		return newMistralLLM[T](config)
+	case "gemini":
+		return newGeminiLLM[T](config)
+	default:
+		return nil, fmt.Errorf("unsuported LLM type: %s", llmType)
+	}
 }
 
-/*
-NewMistralLLM creates a new instance of a LanguageModel using the Mistral API.
-It takes a variable number of lLMOption arguments to customize the model's settings.
+func newAnthropicLLM[T ToolType](config LLMConfig) (LanguageModel[T], error) {
+	apiKey, ok := os.LookupEnv("CLAUDE_API_KEY")
+	if !ok {
+		return nil, fmt.Errorf("the CLAUDE_API_KEY was not set")
+	}
 
-The function initializes the Mistral LLM with the following default settings:
-  - Model Name: "mistral-small-latest"
-  - Temperature: 0.7
-  - Max Tokens: 512
-  - Top P: 1
+	llm := &anthropicLLM[T]{
+		config: config,
+		client: anthropic.NewClient(apiKey),
+	}
 
-It automatically retrieves the Mistral API key from the "MISTRAL_API_KEY" environment variable.
+	return llm, nil
+}
 
-These default settings can be overridden by passing in lLMOption arguments.
-For example, to change the model name to "mistral-large", you would use the following code:
-
-	llm := NewMistralLLM(WithModelName("mistral-large"))
-
-The function returns a LanguageModel interface that can be used to generate text.
-*/
-func NewMistralLLM(opts ...lLMOption) LanguageModel {
-	llm := &mistralLLM{
-		modelName:   "mistral-small-latest",
-		temperature: 0.7,
-		maxTokens:   512,
-		topP:        1,
+func newMistralLLM[T ToolType](config LLMConfig) (LanguageModel[T], error) {
+	llm := &mistralLLM[T]{
+		config: config,
 		// It will look for MISTRAL_API_KEY environment variable
 		client: mistral.NewMistralClientDefault(""),
 	}
 
-	for _, opt := range opts {
-		opt(llm)
-	}
-
-	return llm
+	return llm, nil
 }
 
-/*
-NewGeminiClient creates a new instance of a LanguageModel using Google's Gemini API.
-It takes a variable number of lLMOption arguments to customize the model's settings.
-
-The function reads the GEMINI_API_KEY environment variable to authenticate with the Gemini API.
-If the environment variable is not set, the function will log a fatal error and exit.
-
-By default, the function initializes the Gemini LLM with the following settings:
-  - Model Name: "gemini-1.5-pro-exp-0801"
-  - Temperature: 0.7
-  - Max Tokens: 512
-  - Top P: 1
-
-These default settings can be overridden by passing in lLMOption arguments.
-For example, to change the model name to "gemini-pro", you would use the following code:
-
-	llm := NewGeminiClient(WithModelName("gemini-pro"))
-
-The function returns a LanguageModel interface that can be used to generate text.
-*/
-func NewGeminiClient(opts ...lLMOption) LanguageModel {
+func newGeminiLLM[T ToolType](config LLMConfig) (LanguageModel[T], error) {
 	ctx := context.Background()
 
 	apiKey, ok := os.LookupEnv("GEMINI_API_KEY")
 	if !ok {
-		log.Fatalln("Environment variable GEMINI_API_KEY not set")
+		return nil, fmt.Errorf("the Environment variable GEMINI_API_KEY not set")
 	}
 
 	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
@@ -192,96 +101,43 @@ func NewGeminiClient(opts ...lLMOption) LanguageModel {
 		log.Fatalf("Error creating client: %v", err)
 	}
 
-	llm := &geminiLLM{
-		modelName:   "gemini-1.5-pro-exp-0801",
-		temperature: 0.7,
-		maxTokens:   512,
-		topP:        1,
-		client:      client,
+	llm := &geminiLLM[T]{
+		config: config,
+		client: client,
 	}
 
-	for _, opt := range opts {
-		opt(llm)
-	}
-
-	return llm
+	return llm, nil
 }
 
-/*
-lLMOption is a function type that represents an option that can be applied
-to a LanguageModel.
+type LLMOption func(LLMConfig)
 
-It takes an empty interface as input, which allows it to be used with
-different LLM implementations. The actual implementation of the option
-is responsible for type-asserting the input to the correct LLM type
-and setting the desired option.
-*/
-type lLMOption func(interface{})
-
-/*
-WithMaxTokens creates an lLMOption that sets the maximum number of tokens
-allowed in the generated text for the given LanguageModel.
-
-It takes an integer maxTokens as input, representing the maximum number
-of tokens allowed.
-
-It returns an lLMOption function that takes an empty interface as input.
-This function uses a type switch to determine the concrete type of the
-LanguageModel passed to it and sets the maxTokens property accordingly.
-*/
-func WithMaxTokens(maxTokens int) lLMOption {
-	return func(l interface{}) {
-		switch v := l.(type) {
-		case *mistralLLM:
-			v.maxTokens = maxTokens
-		case *anthropicLLM:
-			v.maxTokens = maxTokens
-		case *geminiLLM:
-			v.maxTokens = maxTokens
-		}
+func WithMaxTokens(maxTokens int) LLMOption {
+	return func(c LLMConfig) {
+		c.MaxTokens = maxTokens
 	}
 }
 
-/*
-WithModelName creates an lLMOption that sets the model name for the given LanguageModel.
-
-It takes a string modelName as input, representing the desired model name.
-
-It returns an lLMOption function that takes an empty interface as input.
-This function uses a type switch to determine the concrete type of the
-LanguageModel passed to it and sets the modelName property accordingly.
-*/
-func WithModelName(modelName string) lLMOption {
-	return func(l interface{}) {
-		switch v := l.(type) {
-		case *mistralLLM:
-			v.modelName = modelName
-		case *anthropicLLM:
-			v.modelName = modelName
-		case *geminiLLM:
-			v.modelName = modelName
-		}
+func WithModelName(modelName string) LLMOption {
+	return func(c LLMConfig) {
+		c.ModelName = modelName
 	}
 }
 
-// Helper functions to create GenericTools
-func NewGeminiTool(tool *genai.Tool) GenericTool {
-	return GenericTool{
-		Type: GeminiToolType,
-		Tool: tool,
+func WithTemperature(temperature float32) LLMOption {
+	return func(c LLMConfig) {
+		c.Temperature = temperature
 	}
 }
 
-func NewMistralTool(tool mistral.Tool) GenericTool {
-	return GenericTool{
-		Type: MistralToolType,
-		Tool: tool,
+func WithTopP(topP float32) LLMOption {
+	return func(c LLMConfig) {
+		c.TopP = topP
 	}
 }
 
-func NewAnthropicTool(tool anthropic.ToolDefinition) GenericTool {
-	return GenericTool{
-		Type: AnthropicToolType,
+// NewTool creates a new GenericTool
+func NewTool[T ToolType](tool T) GenericTool[T] {
+	return GenericTool[T]{
 		Tool: tool,
 	}
 }
